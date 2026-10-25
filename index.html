@@ -265,7 +265,7 @@ const sq=t=>String(t||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f
 // lines with them, and then the words anywhere in the hymn; in the usual order within each group
 const srank=(h,q)=>{const t=" "+sq(h.title)+" ";if(sq(h.number)===q||sq(h.psalm)===q)return 0;if(t.startsWith(" "+q))return 1;if(t.includes(q))return 2;if(sq(h.first).includes(q))return 3;return 4};
 const bySearch=(r,q)=>{if(!q)return r;const c=cmp(),k=new Map(r.map(h=>[h,srank(h,q)]));return r.slice().sort((a,b)=>k.get(a)-k.get(b)||c(a,b))};
-const HAY=new Map(),hay=h=>{let v=HAY.get(h);if(v==null){v=" "+sq([h.number,h.title,h.first,h.author,h.meter,h.tune,h.psalm?"psalm "+h.psalm:"",h.lyrics,(h.alts||[]).map(a=>(a.tune||"")+" "+(a.lyrics||"")).join(" ")].join(" "))+" ";HAY.set(h,v)}return v};
+const HAY=new Map(),hay=h=>{let v=HAY.get(h);if(v==null){v=" "+sq([h.number,h.title,h.first,h.author,h.tune,h.psalm?"psalm "+h.psalm:"",h.lyrics,(h.alts||[]).map(a=>(a.tune||"")+" "+(a.lyrics||"")).join(" ")].join(" "))+" ";HAY.set(h,v)}return v};
 // A short number (1-3 digits) only finds hymn and psalm numbers: otherwise "3" would also find hymns whose meter or
 // words have a 3 in them, like 8.5.8.3.
 const hit=(h,t)=>/^\d{1,3}$/.test(t)?(sq(h.number).includes(t)||sq(h.psalm||"").includes(t)):hay(h).includes(t);
