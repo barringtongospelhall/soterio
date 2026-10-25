@@ -266,6 +266,9 @@ const sq=t=>String(t||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f
 const srank=(h,q)=>{const t=" "+sq(h.title)+" ";if(sq(h.number)===q||sq(h.psalm)===q)return 0;if(t.startsWith(" "+q))return 1;if(t.includes(q))return 2;if(sq(h.first).includes(q))return 3;return 4};
 const bySearch=(r,q)=>{if(!q)return r;const c=cmp(),k=new Map(r.map(h=>[h,srank(h,q)]));return r.slice().sort((a,b)=>k.get(a)-k.get(b)||c(a,b))};
 const HAY=new Map(),hay=h=>{let v=HAY.get(h);if(v==null){v=" "+sq([h.number,h.title,h.first,h.author,h.meter,h.tune,h.psalm?"psalm "+h.psalm:"",h.lyrics,(h.alts||[]).map(a=>(a.tune||"")+" "+(a.lyrics||"")).join(" ")].join(" "))+" ";HAY.set(h,v)}return v};
+// A short number (1-3 digits) only finds hymn and psalm numbers: otherwise "3" would also find hymns whose meter or
+// words have a 3 in them, like 8.5.8.3.
+const hit=(h,t)=>/^\d{1,3}$/.test(t)?(sq(h.number).includes(t)||sq(h.psalm||"").includes(t)):hay(h).includes(t);
 function versions(h){return[{tune:h.tune,meter:h.meter,lyrics:h.lyrics,sheets:h.sheets||[],audio:h.audio||"",abc:h.abc||"",note:h.note||"",highNote:!!h.highNote}].concat((h.alts||[]).map(a=>({tune:a.tune,meter:a.noMeter?"":(a.meter||h.meter),lyrics:a.lyrics||h.lyrics,sheets:a.sheets||[],audio:a.audio||"",abc:a.abc||"",note:a.note||"",highNote:!!a.highNote})))}
 function cur(h){const v=versions(h),i=vi(h);return v[i]||v[0]}
 function altScreen(){const h=HYMNS.find(x=>x.id===state.id);if(!h)return list();const vs=versions(h),ci=vi(h);
@@ -389,7 +392,7 @@ return `<div class="sw wsw"><input class="search" id="tq" type="search" placehol
 <div class="catl">${tf.length?tf.map(t=>`<div class="catr tr${cat&&cat.k==="tune"&&nk(cat.v)===nk(t.name)?" on":""}" role="button" tabindex="0" data-a="catpick" data-k="tune" data-c="${esc(t.name)}" data-m="${esc(mK(t.meter))}"><span>${esc(t.name)}${t.meter?`<small>${esc(t.meter)}</small>`:""}</span>${t.abc||t.audio?`<span class="tpw"${t.abc?` data-abc="${tkey(t.abc)}"`:` data-au="${akey(t.audio)}"`}><button class="pb" type="button" aria-label="Play ${esc(t.name)}">${PL}</button></span>`:""}<b>${t.n}</b></div>`).join(""):`<div class="empty">No tunes match “${esc(tq)}”.</div>`}</div>`})()
 :`<div class="catl">${CATS.map(c=>`<button class="catr${on("cat",c)}" type="button" data-a="catpick" data-k="cat" data-c="${esc(c)}"><span>${esc(c)}</span><b>${pool.filter(h=>inCat(h,c)).length}</b></button>`).join("")}</div>`}`}
 function list(){const q=sq(state.q),f=hasCats()?cat:null,c=f&&f.v;
-const pool=HYMNS.filter(h=>(h.collection||"hymn")===cn&&(!f||inFilt(h,f))),r=bySearch(pool.filter(h=>!q||hay(h).includes(q)).sort(cmp()),q);
+const pool=HYMNS.filter(h=>(h.collection||"hymn")===cn&&(!f||inFilt(h,f))),r=bySearch(pool.filter(h=>!q||hit(h,q)).sort(cmp()),q);
 return `<div class="bar"><div class="sw${state.q?" has":""}"><input class="search" id="q" type="search" placeholder="${c?"Search "+esc(c)+"...":ph()}" aria-label="${c?"Search "+esc(c):ph().replace("...","")}" autocomplete="off" value="${esc(state.q)}"><button class="sx" type="button" aria-label="Clear search">×</button></div>${hasCats()?`<button class="btn bk cbtn${c?" on":""}" type="button" data-a="catopen" aria-label="Categories and random hymn">${MENU}</button>`:""}</div>`+
 (c?`<div class="catbar"><button class="catn" type="button" data-a="catopen">${f.k==="by"?`<small>Written by</small>`:f.k==="tune"?`<small>Fits the tune</small>`:""}${esc(c)}</button>${f.k==="tune"?(()=>{const t=tuneList(HYMNS).find(x=>nk(x.name)===nk(f.v));return t&&(t.abc||t.audio)?`<span class="tpw"${t.abc?` data-abc="${tkey(t.abc)}"`:` data-au="${akey(t.audio)}"`}><button class="pb" type="button" aria-label="Play ${esc(t.name)}">${PL}</button></span>`:""})():""}<span>${pool.length} ${pool.length===1?"hymn":"hymns"}</span><button class="catx" type="button" data-a="catx" aria-label="Show all hymns">×</button></div>`:"")+
 (r.length?r.map(card).join(""):`<div class="empty">${pool.length?"No hymns match your search.":EMPTY[cn]}</div>`)}
@@ -430,8 +433,8 @@ const COLS=[["hymn","From the Hymns","hy"],["psalter","From the Psalter","ps"],[
 row=(h,o)=>{const c=COLS.find(x=>x[0]===ck(h))[2];return `<button data-id="${h.id}"><b class="${o?c:""}">${o&&c==="ps"?"<small>Psalm</small>":""}${esc(isPs(h)?(h.psalm||h.number):h.number)}</b><span>${esc(isPs(h)?(h.title||titleCase(h.first||"")):h.title)}</span></button>`},
 pm=/^\s*(?:psalms?|ps|p)\.?\s*(\d{1,3})\s*$/i.exec(hq.value);let out="";
 if(pm){const P=HYMNS.filter(h=>h.collection==="psalter"&&String(h.psalm||h.number).trim()===String(+pm[1]));out=`<div class="srh ps">Go to</div>`+(P.length?P.map(h=>row(h,1)).join(""):`<i>No Psalm ${+pm[1]} yet.</i>`)}
-else{const r=bySearch(HYMNS.filter(h=>ck(h)===cn&&hay(h).includes(t)),t).slice(0,8);out=r.map(h=>row(h,0)).join("");
-COLS.filter(x=>x[0]!==cn).forEach(([k,l,c])=>{const o=bySearch(HYMNS.filter(h=>ck(h)===k&&hay(h).includes(t)),t).slice(0,3);if(o.length)out+=`<div class="srh ${c}">${l}</div>`+o.map(h=>row(h,1)).join("")});
+else{const r=bySearch(HYMNS.filter(h=>ck(h)===cn&&hit(h,t)),t).slice(0,8);out=r.map(h=>row(h,0)).join("");
+COLS.filter(x=>x[0]!==cn).forEach(([k,l,c])=>{const o=bySearch(HYMNS.filter(h=>ck(h)===k&&hit(h,t)),t).slice(0,3);if(o.length)out+=`<div class="srh ${c}">${l}</div>`+o.map(h=>row(h,1)).join("")});
 if(!out)out=`<i>No hymns found.</i>`}
 sr.innerHTML=out;sr.hidden=false;fitSr();setTimeout(fitSr,350);
 sr.querySelectorAll("button").forEach(b=>b.onclick=()=>openHymn(b.dataset.id))}}
